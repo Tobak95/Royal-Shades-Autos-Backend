@@ -1,6 +1,9 @@
 //The user controller handles user-related operations such as registration, login, and profile management.
 
 const USER = require("../models/users");
+const bcrypt = require("bcrypt")
+const generateToken = require("../helpers/generateToken")
+const {sendWelcomeEmail, sendResetEmail} = require("../email/sendEmail")
 
 const handleRegister = async (res, req) => {
   //destructuring the register action or logic from the userSchema from the request body

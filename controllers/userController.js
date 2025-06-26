@@ -4,6 +4,7 @@ const USER = require("../models/users");
 const bcrypt = require("bcrypt");
 const generateToken = require("../helpers/generateToken");
 const { sendWelcomeEmail, sendResetEmail } = require("../email/sendEmail");
+const jwt = require("jsonwebtoken");
 
 const handleRegister = async (res, req) => {
   //destructuring the register action or logic from the userSchema from the request body
@@ -85,18 +86,73 @@ const handleVerifyEmail = async (res, req) => {
     }
     //the user is fully verified
     user.isVerified = true;
-    user.verificationToken = undefined,
-    user.verificationTokenExpires = undefined
-    await user.save()
+    (user.verificationToken = undefined),
+      (user.verificationTokenExpires = undefined);
+    await user.save();
 
     // send a success message
-    return res.status(200).json({success: true, message: "Email verified Successfully"})
+    return res
+      .status(200)
+      .json({ success: true, message: "Email verified Successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
+
+//handling log-in with the already registered unique email and password
+const handleLogin = async (res, req) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  //finding a user with a unique email
+  try {
+    const user = await USER.findOne({ email });
+    if (!user) {
+      return res
+        .status(401)
+        .json({ message: "Account not found, Please Register" });
+    }
+    if (!user.isVerified) {
+      return res
+        .status(403)
+        .json({ message: "Email is not verified, Check your email" });
+    }
+
+    //checking if password is correct while the user is logging in
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    //generate token  (validity, period) jwt would be used for authorization,
+    //payload means the unique identification of the user
+    //jsonwebtoken is used to sign the token, and its would be installed in the terminal as npm i jason web token
+
+    const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
+      expiresIn: "1 day",
+    });
+
+    return res.status(200).json({
+      token,
+      message: "Login successful",
+      success: true,
+      user: {
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   handleRegister,
   handleVerifyEmail,
+  handleLogin,
 };

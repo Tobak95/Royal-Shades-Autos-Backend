@@ -3,7 +3,7 @@ const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
 const PORT = process.env.PORT || 4152;
-const userRouter = require("./routes/userRouter")
+const userRouter = require("./routes/userRouter");
 
 //middlewares
 app.use(express.json());
@@ -15,8 +15,7 @@ app.get("/", (req, res) => {
     .json({ success: true, message: "Autos Api is running successfully!" });
 });
 //the userROuter which is imported above in line 6 would be called below
-app.use("api/auth", userRouter)
-
+app.use("/api/auth", userRouter);
 
 //error handling routes
 app.use((req, res) => {

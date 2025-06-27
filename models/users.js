@@ -12,12 +12,14 @@ const userSchema = new schema(
       type: String,
       unique: true,
       required: [true, "Please provide your email address"],
+      match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
 
-    PhoneNumber: {
+    phoneNumber: {
       type: String,
       unique: true,
-      match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      match: [/^\+?[0-9]{7,15}$/, "Please provide a valid phone number"],
+      required: [true, "Please provide your phone number"],
     },
 
     password: {

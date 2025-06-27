@@ -6,9 +6,8 @@ const generateToken = require("../helpers/generateToken");
 const { sendWelcomeEmail, sendResetEmail } = require("../email/sendEmail");
 const jwt = require("jsonwebtoken");
 
-const handleRegister = async (res, req) => {
+const handleRegister = async (req, res) => {
   //destructuring the register action or logic from the userSchema from the request body
-
   const { fullName, email, phoneNumber, password } = req.body;
 
   try {
@@ -30,6 +29,14 @@ const handleRegister = async (res, req) => {
     //verify process
     const verificationToken = generateToken();
     const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+    
+    //sending an email - this comes after the user is created and we need to construct the client Url
+    const clientUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+    await sendWelcomeEmail({
+      email: user.email,
+      fullName: user.fullName,
+      clientUrl,
+    });
 
     //save to database
     const user = await USER.create({
@@ -41,13 +48,6 @@ const handleRegister = async (res, req) => {
       verificationTokenExpires,
     });
 
-    //sending an email - this comes after the user is created and we need to construct the client Url
-    const clientUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-    await sendWelcomeEmail({
-      email: user.email,
-      fullName: user.fullName,
-      clientUrl,
-    });
     // message that should be sent the the user is registered successfully
 
     return res
@@ -61,8 +61,8 @@ const handleRegister = async (res, req) => {
 
 //handle register has been set up and the next thing i need to fix is my handle email verification, which would be verified with a token
 
-const handleVerifyEmail = async (res, req) => {
-  const { token } = res.params;
+const handleVerifyEmail = async (req, res) => {
+  const { token } = req.params;
   try {
     //1, find the user (by email)
     //2, find the user by token
@@ -101,7 +101,7 @@ const handleVerifyEmail = async (res, req) => {
 };
 
 //handling log-in with the already registered unique email and password
-const handleLogin = async (res, req) => {
+const handleLogin = async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });

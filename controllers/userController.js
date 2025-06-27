@@ -29,7 +29,7 @@ const handleRegister = async (req, res) => {
     //verify process
     const verificationToken = generateToken();
     const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
-    
+
     //sending an email - this comes after the user is created and we need to construct the client Url
     const clientUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
     await sendWelcomeEmail({
@@ -151,8 +151,123 @@ const handleLogin = async (req, res) => {
   }
 };
 
+const resendVerificationEmail = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    const user = await USER.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "user not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: " Email is already verified" });
+    }
+
+    //since we are resending a new verification email, we need to generate a new verification token for the user
+
+    const newToken = generateToken();
+    const tokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+
+    user.verificationToken = newToken;
+    user.verificationTokenExpires = tokenExpires;
+    await user.save();
+
+    //resend the verification email to he user
+    const clientUrl = `${process.env.FRONTEND_URL}/verify-email/${newToken}`;
+    await sendWelcomeEmail({
+      email: user.email,
+      fullName: user.fullName,
+      clientUrl,
+    });
+
+    return res
+      .status(210)
+      .json({ success: true, message: "verification Email sent successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const handleForgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    const user = await USER.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "user not found" });
+    }
+
+    //we need to generate a reset password token for the user
+
+    const token = generateToken();
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 24 * 60 * 60 * 1000; //1 day
+    await user.save();
+
+    //resend mail to the user with the reset password link
+    const clientUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    await sendResetEmail({
+      email: user.email,
+      fullName: user.fullName,
+      clientUrl,
+    });
+    return res.status(200).json({
+      success: true,
+      token,
+      message: "Reset password email sent successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const handleChangePassword = async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ message: "All inputs is required" });
+    }
+    const user = await USER.findOne({
+      email,
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "user not found" });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
 module.exports = {
   handleRegister,
   handleVerifyEmail,
   handleLogin,
+  resendVerificationEmail,
+  handleForgotPassword,
+  handleChangePassword,
 };

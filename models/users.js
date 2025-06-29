@@ -27,10 +27,12 @@ const userSchema = new schema(
       minLength: [true, "Password is required"],
       required: [true, "Password is required"],
     },
+
     isVerified: {
       type: Boolean,
       default: false,
     },
+
     verificationToken: String,
     verificationTokenExpires: Date,
     resetPasswordToken: String,

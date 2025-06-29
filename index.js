@@ -4,9 +4,17 @@ const app = express();
 const mongoose = require("mongoose");
 const PORT = process.env.PORT || 4152;
 const userRouter = require("./routes/userRouter");
+const cors = require("cors");
 
 //middlewares
 app.use(express.json());
+app.use(
+  cors({
+    origin: [process.env.FRONTEND_URL, process.env.FRONTEND_LOCAL_URL],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 //routes
 app.get("/", (req, res) => {

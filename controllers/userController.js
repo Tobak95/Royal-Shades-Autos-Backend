@@ -16,6 +16,9 @@ const handleRegister = async (req, res) => {
     const alreadyExistingUser = await USER.findOne({
       $or: [{ email: email || null }, { phoneNumber: phoneNumber || null }],
     });
+
+    console.log(fullName, email, phoneNumber, password);
+    
     if (alreadyExistingUser) {
       return res
         .status(400)
@@ -29,15 +32,6 @@ const handleRegister = async (req, res) => {
     //verify process
     const verificationToken = generateToken();
     const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
-
-    //sending an email - this comes after the user is created and we need to construct the client Url
-    const clientUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-    await sendWelcomeEmail({
-      email: user.email,
-      fullName: user.fullName,
-      clientUrl,
-    });
-
     //save to database
     const user = await USER.create({
       fullName,
@@ -46,6 +40,14 @@ const handleRegister = async (req, res) => {
       phoneNumber,
       verificationToken,
       verificationTokenExpires,
+    });
+
+    //sending an email - this comes after the user is created and we need to construct the client Url
+    const clientUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+    await sendWelcomeEmail({
+      email: user.email,
+      fullName: user.fullName,
+      clientUrl,
     });
 
     // message that should be sent the the user is registered successfully

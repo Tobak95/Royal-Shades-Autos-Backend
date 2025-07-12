@@ -18,7 +18,7 @@ const handleRegister = async (req, res) => {
     });
 
     console.log(fullName, email, phoneNumber, password);
-    
+
     if (alreadyExistingUser) {
       return res
         .status(400)

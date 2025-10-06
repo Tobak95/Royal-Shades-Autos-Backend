@@ -186,12 +186,13 @@ const resendVerificationEmail = async (req, res) => {
       email: user.email,
       fullName: user.fullName,
       clientUrl,
-      newToken
     });
 
-    return res
-      .status(200)
-      .json({ success: true, message: "verification Email sent successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "verification Email sent successfully",
+      newToken,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });

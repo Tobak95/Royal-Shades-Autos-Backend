@@ -33,6 +33,7 @@ const startServer = async () => {
       console.log(`server is running on port ${PORT}`);
     });
   } catch (error) {
+    console.log(error);
     console.error("Error connecting to the database");
   }
 };

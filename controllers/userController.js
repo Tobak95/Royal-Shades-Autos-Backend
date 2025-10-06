@@ -72,6 +72,7 @@ const handleVerifyEmail = async (req, res) => {
     const user = await USER.findOne({
       verificationToken: token,
     });
+    console.log(user);
     if (!user) {
       return res.status(404).json({ message: "invalid verification token" });
     }
@@ -185,10 +186,11 @@ const resendVerificationEmail = async (req, res) => {
       email: user.email,
       fullName: user.fullName,
       clientUrl,
+      newToken
     });
 
     return res
-      .status(210)
+      .status(200)
       .json({ success: true, message: "verification Email sent successfully" });
   } catch (error) {
     console.error(error);

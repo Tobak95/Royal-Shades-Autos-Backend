@@ -16,6 +16,6 @@ router.post("/login", handleLogin);
 router.post("/resend-verification-email", resendVerificationEmail);
 router.post("/forgot-password", handleForgotPassword);
 
-router.patch("/change-password", handleChangePassword);
+http: router.patch("/change-password", handleChangePassword);
 
 module.exports = router;

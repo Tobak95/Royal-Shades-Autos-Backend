@@ -28,6 +28,12 @@ const userSchema = new schema(
       required: [true, "Password is required"],
     },
 
+    role: {
+      type: String,
+      enum: ["customer", "admin"],
+      default: "customer",
+    },
+
     isVerified: {
       type: Boolean,
       default: false,

@@ -14,29 +14,27 @@ const sendMail = async ({ to, subject, html }) => {
     },
   });
 
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL,
-      to: to,
-      subject: subject,
-      html: html,
-    });
-    console.log(`email sent ${info.response}`);
-  } catch (error) {
-    console.log(error);
-  }
+  // errors are not swallowed here, so the calling controller can catch them
+  const info = await transporter.sendMail({
+    from: process.env.EMAIL,
+    to: to,
+    subject: subject,
+    html: html,
+  });
+  console.log(`email sent ${info.response}`);
+  return info;
 };
 
-const sendWelcomeEmail = ({ fullName, clientUrl, email }) => {
+const sendWelcomeEmail = async ({ fullName, clientUrl, email }) => {
   const subject = "Welcome to Royal Shades Autos";
   const html = createWelcomeTemplates(fullName, clientUrl);
-  sendMail({ to: email, subject, html });
+  return await sendMail({ to: email, subject, html });
 };
 
-const sendResetEmail = ({ fullName, clientUrl, email }) => {
+const sendResetEmail = async ({ fullName, clientUrl, email }) => {
   const subject = "Password reset request";
   const html = createResetTemplate(fullName, clientUrl);
-  sendMail({ to: email, subject, html });
+  return await sendMail({ to: email, subject, html });
 };
 
 module.exports = { sendWelcomeEmail, sendResetEmail}

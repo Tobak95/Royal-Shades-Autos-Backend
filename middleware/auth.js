@@ -17,7 +17,9 @@ const isLoggedIn = (req, res, next) => {
         .json({ message: "Unauthorized to perform action" });
     }
     req.user = {
+      id: payload.id,
       email: payload.email,
+      role: payload.role,
     };
     next();
   } catch (error) {

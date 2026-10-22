@@ -5,19 +5,29 @@ const bcrypt = require("bcrypt");
 const generateToken = require("../helpers/generateToken");
 const { sendWelcomeEmail, sendResetEmail } = require("../email/sendEmail");
 const jwt = require("jsonwebtoken");
+const normalizePhone = require("../helpers/normalizePhone");
 
 const handleRegister = async (req, res) => {
   //destructuring the register action or logic from the userSchema from the request body
-  const { fullName, email, phoneNumber, password } = req.body;
+  const { fullName, email, password } = req.body;
+  //accepts 08012345678 or +2348012345678 and stores both as +2348012345678
+  const phoneNumber = normalizePhone(req.body.phoneNumber);
 
   try {
     //check if the user already exists or find the user by email
+    //older records may have the phone saved in local 0... format, so check that too
+    const localPhone =
+      phoneNumber && phoneNumber.startsWith("+234")
+        ? `0${phoneNumber.slice(4)}`
+        : phoneNumber;
 
     const alreadyExistingUser = await USER.findOne({
-      $or: [{ email: email || null }, { phoneNumber: phoneNumber || null }],
+      $or: [
+        { email: email || null },
+        { phoneNumber: phoneNumber || null },
+        { phoneNumber: localPhone || null },
+      ],
     });
-
-    console.log(fullName, email, phoneNumber, password);
 
     if (alreadyExistingUser) {
       return res
@@ -57,6 +67,10 @@ const handleRegister = async (req, res) => {
       .json({ success: true, message: "User Registered Successfully" });
   } catch (error) {
     console.error(error);
+    //invalid input (e.g. bad phone number) is the client's fault, not a server error
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -134,18 +148,24 @@ const handleLogin = async (req, res) => {
     //payload means the unique identification of the user
     //jsonwebtoken is used to sign the token, and its would be installed in the terminal as npm i jason web token
 
-    const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
-      expiresIn: "1 day",
-    });
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1 day" }
+    );
 
     return res.status(200).json({
       token,
       message: "Login successful",
       success: true,
       user: {
+        _id: user._id,
         fullName: user.fullName,
         email: user.email,
         phoneNumber: user.phoneNumber,
+        role: user.role,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
@@ -191,7 +211,6 @@ const resendVerificationEmail = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "verification Email sent successfully",
-      newToken,
     });
   } catch (error) {
     console.error(error);
@@ -227,7 +246,6 @@ const handleForgotPassword = async (req, res) => {
     });
     return res.status(200).json({
       success: true,
-      token,
       message: "Reset password email sent successfully",
     });
   } catch (error) {
@@ -268,6 +286,43 @@ const handleChangePassword = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+//reset password from the emailed link: POST /reset-password/:token with { password }
+const handleResetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ message: "Password is required" });
+  }
+
+  try {
+    const user = await USER.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Reset link is invalid or has expired" });
+    }
+
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(password, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   handleRegister,
   handleVerifyEmail,
@@ -275,4 +330,5 @@ module.exports = {
   resendVerificationEmail,
   handleForgotPassword,
   handleChangePassword,
+  handleResetPassword,
 };
